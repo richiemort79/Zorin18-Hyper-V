@@ -33,6 +33,29 @@ echo "  Blacklisting hyperv_fb driver (fixes Xorg display corruption)..."
 echo "blacklist hyperv_fb" | sudo tee /etc/modprobe.d/blacklist-hyperv-fb.conf > /dev/null
 sudo update-initramfs -u
 
+# Fix mouse lag/slowdown (common Hyper-V issue)
+echo "  Configuring mouse settings for better Hyper-V performance..."
+mkdir -p ~/.config
+cat > ~/.config/mouse-fix.sh << 'EOF'
+#!/bin/bash
+# Disable mouse acceleration for smoother movement
+xinput set-prop pointer:'Microsoft Vmbus HID-compliant Mouse' 'libinput Accel Profile Enabled' 0, 1 2>/dev/null || true
+xinput set-prop pointer:'Microsoft Vmbus HID-compliant Mouse' 'libinput Accel Speed' 0 2>/dev/null || true
+EOF
+chmod +x ~/.config/mouse-fix.sh
+
+# Run on startup
+mkdir -p ~/.config/autostart
+cat > ~/.config/autostart/mouse-fix.desktop << 'EOF'
+[Desktop Entry]
+Type=Application
+Name=Fix Mouse Performance
+Exec=/bin/bash -c "sleep 2 && ~/.config/mouse-fix.sh"
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+EOF
+
 # Disable VM suspend to prevent hangs
 echo "[3/5] Disabling VM suspend (use Hyper-V Save State instead)..."
 gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0
