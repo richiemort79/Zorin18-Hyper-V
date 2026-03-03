@@ -256,13 +256,18 @@ echo "✓ Resolution will be set automatically on login"
 # Install Maestral
 echo "[6/6] Installing Maestral..."
 
-# Install Qt dependencies needed for Maestral GUI
-sudo apt install -y pipx libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0
+# Check if Maestral is already installed
+if command -v maestral &> /dev/null; then
+    echo "  Maestral already installed, skipping..."
+else
+    # Install Qt dependencies needed for Maestral GUI
+    sudo apt install -y pipx libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0
 
-pipx install 'maestral[gui]'
-pipx ensurepath
+    pipx install 'maestral[gui]'
+    pipx ensurepath
 
-echo "✓ Maestral installed via pipx"
+    echo "✓ Maestral installed via pipx"
+fi
 
 echo ""
 echo "========================================"
