@@ -71,9 +71,9 @@ sudo systemctl disable systemd-resolved
 # Remove symlink to systemd-resolved
 sudo rm /etc/resolv.conf
 
-# Create static resolv.conf with common DNS servers (default: home/Google WiFi)
+# Create static resolv.conf with common DNS servers
 cat << EOF | sudo tee /etc/resolv.conf > /dev/null
-# Static DNS configuration (Home - Google WiFi)
+# Static DNS configuration
 nameserver 8.8.8.8
 nameserver 8.8.4.4
 nameserver 1.1.1.1
@@ -87,106 +87,7 @@ sudo apt install -y nscd
 sudo systemctl enable nscd
 sudo systemctl start nscd
 
-echo "✓ DNS configured with nscd caching (Home profile active)"
-
-# Create network switcher script for home/eduroam
-echo "  Creating network profile switcher..."
-cat > ~/.switch-network.sh << 'SWITCHEOF'
-#!/bin/bash
-# Switch between Home (Google WiFi) and Eduroam (Lancaster) DNS
-
-case "$1" in
-    home)
-        echo "Switching to Home (Google WiFi DNS)..."
-        sudo chattr -i /etc/resolv.conf
-        cat << EOF | sudo tee /etc/resolv.conf > /dev/null
-# Home - Google WiFi DNS
-nameserver 8.8.8.8
-nameserver 8.8.4.4
-nameserver 1.1.1.1
-EOF
-        sudo chattr +i /etc/resolv.conf
-        sudo systemctl restart nscd
-        echo "✓ Home DNS active: 8.8.8.8"
-        ;;
-    eduroam)
-        echo "Switching to Eduroam (Lancaster University DNS)..."
-        sudo chattr -i /etc/resolv.conf
-        cat << EOF | sudo tee /etc/resolv.conf > /dev/null
-# Eduroam - Lancaster University DNS
-search lancs.ac.uk
-nameserver 148.88.65.52
-nameserver 148.88.65.53
-nameserver 8.8.8.8
-EOF
-        sudo chattr +i /etc/resolv.conf
-        sudo systemctl restart nscd
-        echo "✓ Eduroam DNS active: 148.88.65.52 (Lancaster)"
-        ;;
-    status)
-        echo "Current DNS configuration:"
-        cat /etc/resolv.conf
-        ;;
-    *)
-        echo "Usage: switch-network [home|eduroam|status]"
-        echo ""
-        echo "  home     - Use Google WiFi DNS (8.8.8.8)"
-        echo "  eduroam  - Use Lancaster University DNS (148.88.65.52)"
-        echo "  status   - Show current DNS config"
-        exit 1
-        ;;
-esac
-
-# Test connectivity
-echo ""
-echo "Testing connection..."
-if ping -c 2 google.com &>/dev/null; then
-    echo "✓ Internet connectivity working"
-else
-    echo "✗ No internet - check network connection"
-fi
-SWITCHEOF
-chmod +x ~/.switch-network.sh
-
-# Create desktop shortcut for easy access
-mkdir -p ~/.local/share/applications
-cat > ~/.local/share/applications/switch-network-home.desktop << 'DESKTOPEOF'
-[Desktop Entry]
-Type=Application
-Name=Switch to Home Network
-Comment=Use Google WiFi DNS (8.8.8.8)
-Exec=gnome-terminal -- bash -c "~/.switch-network.sh home; read -p 'Press Enter to close...'"
-Icon=network-wired
-Terminal=true
-Categories=Network;System;
-DESKTOPEOF
-
-cat > ~/.local/share/applications/switch-network-eduroam.desktop << 'DESKTOPEOF2'
-[Desktop Entry]
-Type=Application
-Name=Switch to Eduroam Network
-Comment=Use Lancaster University DNS (148.88.65.52)
-Exec=gnome-terminal -- bash -c "~/.switch-network.sh eduroam; read -p 'Press Enter to close...'"
-Icon=network-wireless
-Terminal=true
-Categories=Network;System;
-DESKTOPEOF2
-
-# Add bash aliases for quick switching
-if ! grep -q "net-home" ~/.bashrc; then
-    cat >> ~/.bashrc << 'ALIASEOF'
-
-# Network profile switcher aliases
-alias net-home='~/.switch-network.sh home'
-alias net-edu='~/.switch-network.sh eduroam'
-alias net-status='~/.switch-network.sh status'
-ALIASEOF
-    echo "✓ Bash aliases added (net-home, net-edu, net-status)"
-fi
-
-echo "✓ Network switcher created: ~/.switch-network.sh"
-echo "  Desktop shortcuts: Search 'Switch to Home' or 'Switch to Eduroam'"
-echo "  Terminal aliases: net-home | net-edu | net-status"
+echo "✓ DNS configured with nscd caching"
 
 # Set resolution mode
 echo "[5/6] Setting display resolution (2496x1664)..."
@@ -259,12 +160,8 @@ echo ""
 echo "DNS Configuration:"
 echo "  systemd-resolved disabled"
 echo "  Using nscd for DNS caching"
-echo "  Default: Home profile (8.8.8.8, 8.8.4.4, 1.1.1.1)"
-echo ""
-echo "Network Switcher - 3 ways to switch:"
-echo "  1. Desktop: Search 'Switch to Home' or 'Switch to Eduroam'"
-echo "  2. Terminal: net-home | net-edu | net-status"
-echo "  3. Script: ~/.switch-network.sh [home|eduroam|status]"
+echo "  DNS servers: 8.8.8.8, 8.8.4.4, 1.1.1.1"
+echo "  /etc/resolv.conf is immutable (chattr +i)"
 echo ""
 echo "Resolution Setup:"
 echo "  The PowerShell script already set 2496x1664 on the host."
