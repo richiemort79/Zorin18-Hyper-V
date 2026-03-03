@@ -58,36 +58,49 @@ EOF
 
 # Disable VM suspend to prevent hangs
 echo "[3/5] Disabling VM suspend (use Hyper-V Save State instead)..."
-gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0
-gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 0
+
+# Check if running in a display session (gsettings needs this)
+if [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; then
+    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 2>/dev/null || echo "  Note: Could not set power settings (run when logged into desktop)"
+    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 0 2>/dev/null || true
+    echo "✓ Power management configured"
+else
+    echo "  Skipping gsettings (no display session) - run again after logging into desktop"
+fi
 
 # Fix DNS - replace systemd-resolved with nscd
 echo "[4/6] Fixing DNS (replacing systemd-resolved with nscd)..."
 
-# Stop and disable systemd-resolved
-sudo systemctl stop systemd-resolved
-sudo systemctl disable systemd-resolved
+# Check if nscd is already installed and running
+if systemctl is-active --quiet nscd && [ -f /etc/resolv.conf ]; then
+    echo "  nscd already configured, skipping DNS setup..."
+else
+    # Stop and disable systemd-resolved
+    sudo systemctl stop systemd-resolved 2>/dev/null || true
+    sudo systemctl disable systemd-resolved 2>/dev/null || true
 
-# Remove symlink to systemd-resolved
-sudo rm /etc/resolv.conf
+    # Remove immutable flag if set, then remove resolv.conf
+    sudo chattr -i /etc/resolv.conf 2>/dev/null || true
+    sudo rm -f /etc/resolv.conf
 
-# Create static resolv.conf with common DNS servers (default: home/Google WiFi)
-cat << EOF | sudo tee /etc/resolv.conf > /dev/null
+    # Create static resolv.conf with common DNS servers (default: home/Google WiFi)
+    cat << EOF | sudo tee /etc/resolv.conf > /dev/null
 # Static DNS configuration (Home - Google WiFi)
 nameserver 8.8.8.8
 nameserver 8.8.4.4
 nameserver 1.1.1.1
 EOF
 
-# Make it immutable so nothing overwrites it
-sudo chattr +i /etc/resolv.conf
+    # Make it immutable so nothing overwrites it
+    sudo chattr +i /etc/resolv.conf
 
-# Install and enable nscd for DNS caching
-sudo apt install -y nscd
-sudo systemctl enable nscd
-sudo systemctl start nscd
+    # Install and enable nscd for DNS caching
+    sudo apt install -y nscd
+    sudo systemctl enable nscd
+    sudo systemctl start nscd
 
-echo "✓ DNS configured with nscd caching (Home profile active)"
+    echo "✓ DNS configured with nscd caching (Home profile active)"
+fi
 
 # Create network switcher script for home/eduroam
 echo "  Creating network profile switcher..."
