@@ -5,12 +5,36 @@
 # Run as Administrator
 
 [CmdletBinding()]
-param()
+param(
+    [string]$VMName = ""
+)
+
+# Prompt for VM name if not provided
+if ([string]::IsNullOrWhiteSpace($VMName)) {
+    $VMName = Read-Host "Enter VM name (default: Zorin18Pro)"
+    if ([string]::IsNullOrWhiteSpace($VMName)) {
+        $VMName = "Zorin18Pro"
+    }
+}
+
+# Check if VM already exists
+if (Get-VM -Name $VMName -ErrorAction SilentlyContinue) {
+    Write-Host ""
+    Write-Host "WARNING: VM '$VMName' already exists!" -ForegroundColor Yellow
+    $response = Read-Host "Do you want to DELETE it and create new? (yes/no)"
+    if ($response -ne "yes") {
+        Write-Host "Cancelled. Use a different name or delete the existing VM manually." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Deleting existing VM..." -ForegroundColor Yellow
+    Stop-VM -Name $VMName -Force -ErrorAction SilentlyContinue
+    Remove-VM -Name $VMName -Force
+}
 
 # VM Configuration
-$vmName      = "Zorin18Pro"
-$vmPath      = "C:\HyperV\Zorin18Pro"
-$vhdPath     = "$vmPath\Zorin18Pro.vhdx"
+$vmName      = $VMName
+$vmPath      = "C:\HyperV\$vmName"
+$vhdPath     = "$vmPath\$vmName.vhdx"
 $isoPath     = "C:\ISOs\Zorin-OS-18-Pro.iso"
 $memory      = 16GB
 $cpuCount    = 6

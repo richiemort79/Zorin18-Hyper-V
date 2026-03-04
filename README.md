@@ -1,52 +1,50 @@
-# Zorin OS 18 on Hyper-V (Surface Laptop 7)
+# Zorin OS 18 Pro on Hyper-V (Surface Laptop 7)
 
-A minimal, tested setup for running Zorin OS 18 on Hyper-V with proper resolution support and Hyper-V integration on a Surface Laptop 7.
+Automated setup scripts for running Zorin OS 18 Pro in Hyper-V on Surface Laptop 7 with native resolution, proper integration, and dual network profile support.
 
 ## Features
 
 - ✅ Native Surface Laptop 7 resolution (2496x1664)
 - ✅ Hyper-V integration services
+- ✅ Display driver fix (Ubuntu 24.04 hyperv_fb conflict)
 - ✅ VM hang prevention (disables problematic suspend)
-- ✅ DNS fix (replaces systemd-resolved with nscd)
+- ✅ DNS fix for Google WiFi (systemd-resolved → nscd)
+- ✅ Dual network profiles (Home & Eduroam with easy switching)
+- ✅ Mouse lag fix (disabled acceleration)
 - ✅ Maestral (Dropbox) GUI client
 - ✅ Minimal approach - no unnecessary complexity
-- ✅ Tested on Surface Laptop 7 (32GB RAM)
+- ✅ Tested on Surface Laptop 7 (Intel Core Ultra, 32GB RAM)
 
 ## Quick Start
 
-### 1. Windows Host Setup
-
-Run as Administrator:
+### 1. On Windows Host (PowerShell as Administrator)
 
 ```powershell
-# Edit the script first - change line 18 to use your external switch:
-# $vswitchName = "External Virtual Switch"
-
 .\setup_zorin_hyperv_clean.ps1
 ```
 
-This creates and configures your Hyper-V VM with:
-- 16GB RAM (static)
-- 6 CPU cores
-- 150GB disk
-- 2496x1664 resolution
-- Secure Boot disabled (required for Zorin)
-- External network switch (for internet)
+This will:
+- Prompt for VM name (or use default "Zorin18Pro")
+- Check for existing VM and warn before overwriting
+- Create Gen 2 VM with optimal settings
+- Configure resolution (2496x1664)
+- Set up External Virtual Switch for networking
+- Disable Secure Boot (required for Zorin ISO)
+
+**Important:** Edit `$vswitchName` in the script to match your network switch name (see [NETWORK_SETUP_GUIDE.md](NETWORK_SETUP_GUIDE.md))
 
 ### 2. Install Zorin OS
 
-1. Start the VM from Hyper-V Manager
-2. Install Zorin OS normally
-3. **Important**: Choose **Xorg** session (not Wayland) during login
+1. Boot the VM (it will auto-boot from ISO)
+2. Install Zorin OS 18 Pro normally
+3. **Choose Xorg session** (Wayland not supported in Hyper-V)
+4. Reboot after installation
 
-### 3. Guest Setup
-
-Inside the Zorin VM:
+### 3. Inside Zorin (Guest OS)
 
 ```bash
 chmod +x zorin_minimal_setup.sh
 ./zorin_minimal_setup.sh
-sudo reboot
 ```
 
 This installs:
@@ -54,170 +52,72 @@ This installs:
 - **Display driver fix** (blacklists hyperv_fb to prevent corruption)
 - Resolution configuration (2496x1664)
 - DNS fix (systemd-resolved → nscd)
+- **Network switching profiles** (Home & Eduroam)
+- Mouse performance fixes
 - Maestral (Dropbox client)
 - Disables VM suspend to prevent hangs
 
-## Files
+The script is **idempotent** - safe to run multiple times, skips already-configured parts.
 
-### PowerShell Scripts (Windows Host)
+## Network Switching (Home vs University)
 
-- **`setup_zorin_hyperv_clean.ps1`** - Main VM creation script
-- **`update_existing_vm.ps1`** - Update settings on existing VM
-- **`change_vm_network.ps1`** - Switch VM network adapter
+The setup creates two network profiles for different locations:
 
-### Bash Scripts (Zorin Guest)
-
-- **`zorin_minimal_setup.sh`** - Post-install configuration script
-
-### Documentation
-
-- **`README.md`** - This file
-- **`NETWORK_SETUP_GUIDE.md`** - Detailed network configuration guide
-- **`LICENSE`** - MIT License
-
-## Important Notes
-
-### Network Configuration
-
-**For internet access**, you need an **External Virtual Switch**:
-
-1. Open Hyper-V Manager
-2. Virtual Switch Manager → New → External
-3. Select your physical network adapter (Wi-Fi or Ethernet)
-4. Name it "External Virtual Switch"
-
-Or via PowerShell:
-```powershell
-New-VMSwitch -Name "External Virtual Switch" -NetAdapterName "Wi-Fi" -AllowManagementOS $true
-```
-
-Then edit line 18 in `setup_zorin_hyperv_clean.ps1`:
-```powershell
-$vswitchName = "External Virtual Switch"
-```
-
-### VM Suspend/Sleep
-
-**DO NOT use guest OS suspend** - it will hang the VM after multiple sleep cycles.
-
-Instead:
-- Use **Hyper-V "Save State"** from the host
-- Close laptop lid (configured to save VM state automatically)
-
-The setup script disables guest suspend to prevent this issue.
-
-### Resolution
-
-The resolution is set via:
-1. **Host side**: PowerShell script sets 2496x1664 via `Set-VMVideo`
-2. **Guest side**: xrandr creates and applies the mode
-3. **Persistence**: Auto-runs on login via `~/.xrandr_setup.sh`
-
-If resolution ever resets:
+### At Home (Google WiFi):
 ```bash
-~/.xrandr_setup.sh
+net-home
 ```
+Uses Google DNS (8.8.8.8) - compatible with Google WiFi
 
-### Maestral (Dropbox)
-
-After setup, launch Maestral:
+### At University (Eduroam):
 ```bash
-maestral gui
+net-edu
 ```
+Uses Lancaster University DNS (148.88.65.52, 148.88.65.53)
 
-First run:
-1. Sign in to Dropbox
-2. Choose sync folder (default: ~/Dropbox)
-3. Maestral runs in system tray
+### Three Ways to Switch:
 
-Enable autostart:
-```bash
-maestral autostart -Y
-```
+1. **Desktop Shortcuts** (GUI):
+   - Search: "Switch to Home Network"
+   - Search: "Switch to Eduroam Network"
+
+2. **Terminal Aliases** (Quick):
+   ```bash
+   net-home     # Switch to home
+   net-edu      # Switch to eduroam
+   net-status   # Show current DNS
+   ```
+
+3. **Direct Script**:
+   ```bash
+   ~/.switch-network.sh home
+   ~/.switch-network.sh eduroam
+   ```
+
+**Note:** You may need to ensure the VM is connected to the correct Hyper-V External Virtual Switch that matches your current location.
+
+## Configuration
+
+### VM Settings (PowerShell script):
+- **Memory**: 16GB (recommended - higher values may cause stability issues)
+- **CPUs**: 6 cores (adjust `$cpuCount`)
+- **Disk**: 150GB (adjust `$diskSizeGB`)
+- **Network**: External Virtual Switch (edit `$vswitchName`)
+
+**Note**: While Surface Laptop 7 has more RAM, keeping VM at 16GB provides best stability. Higher allocations may cause issues.
+
+### Resolution:
+Set in PowerShell script (`$horizontalRes`, `$verticalRes`). Persistence handled by guest script via autostart.
+
+## Known Issues
+
+1. **Wayland not supported** - Must use Xorg session
+2. **Guest suspend causes hangs** - Use Hyper-V Save State instead
+3. **Ubuntu 24.04 display driver conflict** - Fixed by blacklisting hyperv_fb driver (script does this automatically)
+4. **Camera/Microphone not supported** - Hyper-V Enhanced Session doesn't work well with Linux guests
+5. **DNS conflicts with Google WiFi** - Fixed by using nscd instead of systemd-resolved
 
 ## Troubleshooting
-
-### Boot Error: "Signed image's hash is not allowed"
-
-Secure Boot is enabled. Disable it:
-```powershell
-Set-VMFirmware -VMName "Zorin18Pro" -EnableSecureBoot Off
-```
-
-The clean setup script does this automatically.
-
-### No Internet in VM
-
-Check network switch:
-```powershell
-# View current switch
-Get-VMNetworkAdapter -VMName "Zorin18Pro"
-
-# Change to external switch
-.\change_vm_network.ps1
-```
-
-Inside VM:
-```bash
-# Check network
-ip addr show
-
-# Restart network
-sudo systemctl restart NetworkManager
-```
-
-### Wrong Resolution
-
-```bash
-# Check current resolution
-xrandr
-
-# Re-apply resolution
-~/.xrandr_setup.sh
-```
-
-### VM Hangs After Sleep
-
-This is why we disable guest suspend. Always use:
-- Hyper-V "Save State" (not guest suspend)
-- Or shutdown/restart the VM
-
-### Maestral Qt Error
-
-Install missing dependencies:
-```bash
-sudo apt install -y libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0
-```
-
-### DNS Not Working
-
-The script disables systemd-resolved and uses nscd. To verify:
-
-```bash
-# Check DNS is working
-ping -c 4 google.com
-
-# Check resolv.conf
-cat /etc/resolv.conf
-
-# Restart nscd if needed
-sudo systemctl restart nscd
-```
-
-To change DNS servers:
-```bash
-# Make resolv.conf writable
-sudo chattr -i /etc/resolv.conf
-
-# Edit it
-sudo nano /etc/resolv.conf
-
-# Make it immutable again
-sudo chattr +i /etc/resolv.conf
-
-# Restart nscd
-sudo systemctl restart nscd
-```
 
 ### Display Corruption / Graphical Glitches in Xorg
 
@@ -233,67 +133,110 @@ sudo update-initramfs -u
 sudo reboot
 ```
 
-This forces use of only the modern `hyperv_drm` driver.
+### Mouse Lag/Slowdown
 
-## System Requirements
+The script automatically disables pointer acceleration. If you still experience lag:
 
-- **Host**: Windows 11 with Hyper-V enabled
-- **RAM**: 16GB+ recommended (VM uses 16GB)
-- **Disk**: 150GB+ free space
-- **CPU**: 6+ cores recommended
-- **Tested on**: Surface Laptop 7 (32GB RAM, Snapdragon X Elite)
-
-## Customization
-
-### Change VM Resources
-
-Edit these variables in `setup_zorin_hyperv_clean.ps1`:
-
-```powershell
-$memory      = 16GB    # Adjust RAM
-$cpuCount    = 6       # Adjust CPU cores
-$diskSizeGB  = 150     # Adjust disk size
-```
-
-### Change Resolution
-
-Edit both scripts to use your desired resolution:
-
-**PowerShell** (line 22-23):
-```powershell
-$horizontalRes = 2496
-$verticalRes   = 1664
-```
-
-**Bash** (the cvt command automatically adjusts):
 ```bash
-cvt 2496 1664 60
+~/.config/mouse-fix.sh
 ```
 
-## Known Issues
+### Resolution Not Correct
 
-1. **Wayland not supported** - Must use Xorg session
-2. **Guest suspend causes hangs** - Use Hyper-V Save State instead
-3. **Ubuntu 24.04 display driver conflict** - Fixed by blacklisting hyperv_fb driver (script does this automatically)
-4. **First boot may be slow** - Hyper-V integration services loading
+```bash
+~/.xrandr_setup.sh
+```
 
-## Contributing
+### Maestral Qt Error
 
-Issues and pull requests welcome! This is a minimal, tested setup but there's always room for improvement.
+Install missing dependencies:
+```bash
+sudo apt install -y libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0
+```
 
-## Acknowledgments
+### DNS Not Working
 
-- Tested on Surface Laptop 7 with Hyper-V
-- Zorin OS 18 (based on Ubuntu 24.04)
-- Hyper-V integration tools from Ubuntu
+Check which profile you're using:
+```bash
+net-status
+```
+
+Switch to appropriate profile for your location (home vs university).
+
+If still not working:
+```bash
+# Check DNS is resolving
+ping -c 4 8.8.8.8
+ping -c 4 google.com
+
+# Check nscd status
+sudo systemctl status nscd
+
+# Restart nscd
+sudo systemctl restart nscd
+```
+
+### Network Not Working at University
+
+Make sure:
+1. Windows host is connected to eduroam
+2. VM network adapter is set to **External Virtual Switch** (not Default Switch)
+3. You're using the eduroam profile: `net-edu`
+
+Check adapter in PowerShell:
+```powershell
+Get-VMNetworkAdapter -VMName "Zorin18Pro" | Select-Object SwitchName
+```
+
+Should show "External Virtual Switch" or your external switch name.
+
+## Files Included
+
+- `setup_zorin_hyperv_clean.ps1` - VM creation script (Windows host)
+- `zorin_minimal_setup.sh` - Post-install configuration (Zorin guest)
+- `README.md` - This file
+- `LICENSE` - MIT License
+- `NETWORK_SETUP_GUIDE.md` - Detailed network configuration guide
+
+## Requirements
+
+- Windows 11 with Hyper-V enabled
+- Surface Laptop 7 (tested on Intel model with 32GB RAM)
+- Zorin OS 18 Pro ISO (place in `C:\ISOs\`)
+- Administrator access
+
+## Technical Details
+
+### Why systemd-resolved → nscd?
+
+Ubuntu 24.04/Zorin 18 has a conflict between systemd-resolved and Google WiFi routers causing DNS resolution failures. The fix:
+1. Disable systemd-resolved
+2. Use nscd (Name Service Cache Daemon) for DNS caching
+3. Static `/etc/resolv.conf` with appropriate DNS servers
+
+### Why Two Network Profiles?
+
+- **Home**: Google WiFi requires specific DNS setup (fixed with nscd)
+- **Eduroam**: University network requires Lancaster-specific DNS servers (148.88.65.52/53)
+- Switching between locations requires different DNS configurations
+- Both profiles keep nscd active for caching
+
+### Why Blacklist hyperv_fb?
+
+Ubuntu 24.04 changed Hyper-V driver loading and now loads both:
+- `hyperv_fb` - Old framebuffer driver (no dynamic resolution, causes conflicts)
+- `hyperv_drm` - New DRM driver (supports mode setting)
+
+Loading both causes display corruption. Blacklisting `hyperv_fb` forces exclusive use of the modern `hyperv_drm` driver.
+
+## Credits
+
+Developed and tested on Surface Laptop 7 with Zorin OS 18 Pro (Ubuntu 24.04 base).
 
 ## License
 
-MIT License - see LICENSE file for details
+MIT License - see [LICENSE](LICENSE) file.
 
-## Support
+## Contributing
 
-For issues:
-1. Check the troubleshooting section above
-2. Review `NETWORK_SETUP_GUIDE.md` for network issues
-3. Open an issue on GitHub with details and error messages
+Issues and pull requests welcome! Please test on Surface Laptop 7 hardware when possible.
