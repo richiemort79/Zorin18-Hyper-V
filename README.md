@@ -96,6 +96,41 @@ Uses Lancaster University DNS (148.88.65.52, 148.88.65.53)
 
 **Note:** You may need to ensure the VM is connected to the correct Hyper-V External Virtual Switch that matches your current location.
 
+## Resolution Switching (Surface vs External Monitor)
+
+The setup supports switching between Surface native and external 4K monitor resolutions:
+
+### Surface Laptop 7 Native (2496x1664):
+```bash
+res-surface
+```
+
+### External 4K Monitor (3840x2160):
+```bash
+res-4k
+```
+
+### Three Ways to Switch Resolutions:
+
+1. **Desktop Shortcuts** (GUI):
+   - Search: "Switch to Surface Resolution"
+   - Search: "Switch to 4K Resolution"
+
+2. **Terminal Aliases** (Quick):
+   ```bash
+   res-surface  # Surface native (2496x1664)
+   res-4k       # 4K external (3840x2160)
+   res-status   # Show current resolution
+   ```
+
+3. **Direct Script**:
+   ```bash
+   ~/.switch-resolution.sh surface
+   ~/.switch-resolution.sh 4k
+   ```
+
+Your chosen resolution persists across reboots.
+
 ## Configuration
 
 ### VM Settings (PowerShell script):

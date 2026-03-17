@@ -227,9 +227,10 @@ xrandr --output Virtual-1 --mode "$MODE_NAME"
 
 echo "✓ Resolution set to $MODE_NAME"
 
-# Make it persistent on login
+# Make it persistent on login (default to Surface resolution)
 cat > ~/.xrandr_setup.sh << 'EOF'
 #!/bin/bash
+# Default to Surface resolution on login
 MODE="2496x1664_60.00"
 if ! xrandr | grep -q "$MODE"; then
     xrandr --newmode "$MODE" 352.50 2496 2688 2952 3408 1664 1667 1677 1724 -hsync +vsync 2>/dev/null || true
@@ -238,6 +239,123 @@ xrandr --addmode Virtual-1 "$MODE" 2>/dev/null || true
 xrandr --output Virtual-1 --mode "$MODE"
 EOF
 chmod +x ~/.xrandr_setup.sh
+
+# Create resolution switcher for Surface and 4K displays
+cat > ~/.switch-resolution.sh << 'RESEOF'
+#!/bin/bash
+# Switch between Surface (2496x1664) and 4K (3840x2160) resolutions
+
+case "$1" in
+    surface)
+        echo "Switching to Surface resolution (2496x1664)..."
+        MODE="2496x1664_60.00"
+        
+        # Create mode if it doesn't exist
+        if ! xrandr | grep -q "$MODE"; then
+            xrandr --newmode "$MODE" 352.50 2496 2688 2952 3408 1664 1667 1677 1724 -hsync +vsync 2>/dev/null || true
+        fi
+        
+        # Add and apply mode
+        xrandr --addmode Virtual-1 "$MODE" 2>/dev/null || true
+        xrandr --output Virtual-1 --mode "$MODE"
+        
+        # Update autostart to use Surface resolution
+        sed -i 's/MODE=".*"/MODE="2496x1664_60.00"/' ~/.xrandr_setup.sh
+        
+        echo "✓ Surface resolution active (2496x1664)"
+        ;;
+        
+    4k|external)
+        echo "Switching to 4K resolution (3840x2160)..."
+        MODE="3840x2160_60.00"
+        
+        # Generate modeline for 4K
+        MODELINE=$(cvt 3840 2160 60 | grep Modeline | cut -d' ' -f3-)
+        
+        # Create mode if it doesn't exist
+        if ! xrandr | grep -q "$MODE"; then
+            xrandr --newmode "$MODE" $MODELINE 2>/dev/null || true
+        fi
+        
+        # Add and apply mode
+        xrandr --addmode Virtual-1 "$MODE" 2>/dev/null || true
+        xrandr --output Virtual-1 --mode "$MODE"
+        
+        # Update autostart to use 4K resolution
+        cat > ~/.xrandr_setup.sh << 'INNER_EOF'
+#!/bin/bash
+MODE="3840x2160_60.00"
+if ! xrandr | grep -q "$MODE"; then
+    MODELINE=$(cvt 3840 2160 60 | grep Modeline | cut -d' ' -f3-)
+    xrandr --newmode "$MODE" $MODELINE 2>/dev/null || true
+fi
+xrandr --addmode Virtual-1 "$MODE" 2>/dev/null || true
+xrandr --output Virtual-1 --mode "$MODE"
+INNER_EOF
+        chmod +x ~/.xrandr_setup.sh
+        
+        echo "✓ 4K resolution active (3840x2160)"
+        ;;
+        
+    status)
+        echo "Current resolution:"
+        xrandr | grep "Virtual-1" | grep -o "[0-9]*x[0-9]*"
+        ;;
+        
+    *)
+        echo "Usage: switch-resolution [surface|4k|status]"
+        echo ""
+        echo "  surface  - Surface Laptop 7 native (2496x1664)"
+        echo "  4k       - External 4K monitor (3840x2160)"
+        echo "  status   - Show current resolution"
+        exit 1
+        ;;
+esac
+
+# Show current resolution
+echo ""
+echo "Current active resolution:"
+xrandr | grep "Virtual-1 connected" | grep -o "[0-9]*x[0-9]*"
+RESEOF
+chmod +x ~/.switch-resolution.sh
+
+# Add bash aliases for resolution switching
+if ! grep -q "res-surface" ~/.bashrc; then
+    cat >> ~/.bashrc << 'RESALIASEOF'
+
+# Resolution switcher aliases
+alias res-surface='~/.switch-resolution.sh surface'
+alias res-4k='~/.switch-resolution.sh 4k'
+alias res-status='~/.switch-resolution.sh status'
+RESALIASEOF
+fi
+
+# Create desktop shortcuts for resolution switching
+cat > ~/.local/share/applications/switch-resolution-surface.desktop << 'DESKTOP1'
+[Desktop Entry]
+Type=Application
+Name=Switch to Surface Resolution
+Comment=2496x1664 (Surface Laptop 7 native)
+Exec=gnome-terminal -- bash -c "~/.switch-resolution.sh surface; read -p 'Press Enter to close...'"
+Icon=video-display
+Terminal=true
+Categories=System;
+DESKTOP1
+
+cat > ~/.local/share/applications/switch-resolution-4k.desktop << 'DESKTOP2'
+[Desktop Entry]
+Type=Application
+Name=Switch to 4K Resolution
+Comment=3840x2160 (External monitor)
+Exec=gnome-terminal -- bash -c "~/.switch-resolution.sh 4k; read -p 'Press Enter to close...'"
+Icon=video-display
+Terminal=true
+Categories=System;
+DESKTOP2
+
+echo "✓ Resolution switcher created (Surface & 4K support)"
+echo "  Desktop: Search 'Switch to Surface' or 'Switch to 4K'"
+echo "  Terminal: res-surface | res-4k | res-status"
 
 # Use autostart instead of .profile - runs after desktop loads
 mkdir -p ~/.config/autostart
@@ -285,9 +403,10 @@ echo "  2. Terminal: net-home | net-edu | net-status"
 echo "  3. Script: ~/.switch-network.sh [home|eduroam|status]"
 echo ""
 echo "Resolution Setup:"
-echo "  The PowerShell script already set 2496x1664 on the host."
-echo "  It should just work. If not, run:"
-echo "    xrandr --output Virtual-1 --auto"
+echo "  Default: 2496x1664 (Surface Laptop 7)"
+echo "  Switch resolutions anytime:"
+echo "    Desktop: Search 'Switch to Surface' or 'Switch to 4K'"
+echo "    Terminal: res-surface | res-4k | res-status"
 echo ""
 echo "To launch Maestral:"
 echo "  maestral gui"
