@@ -260,7 +260,16 @@ case "$1" in
         xrandr --output Virtual-1 --mode "$MODE"
         
         # Update autostart to use Surface resolution
-        sed -i 's/MODE=".*"/MODE="2496x1664_60.00"/' ~/.xrandr_setup.sh
+        cat > ~/.xrandr_setup.sh << 'INNER_EOF'
+#!/bin/bash
+MODE="2496x1664_60.00"
+if ! xrandr | grep -q "$MODE"; then
+    xrandr --newmode "$MODE" 352.50 2496 2688 2952 3408 1664 1667 1677 1724 -hsync +vsync 2>/dev/null || true
+fi
+xrandr --addmode Virtual-1 "$MODE" 2>/dev/null || true
+xrandr --output Virtual-1 --mode "$MODE"
+INNER_EOF
+        chmod +x ~/.xrandr_setup.sh
         
         echo "✓ Surface resolution active (2496x1664)"
         ;;
@@ -269,25 +278,21 @@ case "$1" in
         echo "Switching to 4K resolution (3840x2160)..."
         MODE="3840x2160_60.00"
         
-        # Generate modeline for 4K
-        MODELINE=$(cvt 3840 2160 60 | grep Modeline | cut -d' ' -f3-)
-        
-        # Create mode if it doesn't exist
+        # Create mode if it doesn't exist (using hardcoded modeline)
         if ! xrandr | grep -q "$MODE"; then
-            xrandr --newmode "$MODE" $MODELINE 2>/dev/null || true
+            xrandr --newmode "$MODE" 712.75 3840 4160 4576 5312 2160 2163 2168 2237 -hsync +vsync 2>/dev/null || true
         fi
         
         # Add and apply mode
         xrandr --addmode Virtual-1 "$MODE" 2>/dev/null || true
         xrandr --output Virtual-1 --mode "$MODE"
         
-        # Update autostart to use 4K resolution
+        # Update autostart to use 4K resolution with hardcoded modeline
         cat > ~/.xrandr_setup.sh << 'INNER_EOF'
 #!/bin/bash
 MODE="3840x2160_60.00"
 if ! xrandr | grep -q "$MODE"; then
-    MODELINE=$(cvt 3840 2160 60 | grep Modeline | cut -d' ' -f3-)
-    xrandr --newmode "$MODE" $MODELINE 2>/dev/null || true
+    xrandr --newmode "$MODE" 712.75 3840 4160 4576 5312 2160 2163 2168 2237 -hsync +vsync 2>/dev/null || true
 fi
 xrandr --addmode Virtual-1 "$MODE" 2>/dev/null || true
 xrandr --output Virtual-1 --mode "$MODE"

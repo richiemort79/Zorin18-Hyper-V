@@ -152,11 +152,12 @@ Set-VMProcessor -VMName $vmName -Count $cpuCount -Maximum 90 -EnableHostResource
 Write-Host "[5/8] Configuring memory (static $($memory/1GB)GB)..." -ForegroundColor Yellow
 Set-VMMemory -VMName $vmName -DynamicMemoryEnabled $false -StartupBytes $memory
 
-# Configure video resolution
-Write-Host "[6/8] Setting display resolution (${horizontalRes}x${verticalRes})..." -ForegroundColor Yellow
+# Configure video resolution - set to 4K max to support both Surface and external monitors
+Write-Host "[6/8] Setting maximum display resolution (4K)..." -ForegroundColor Yellow
+Write-Host "  Note: VM can switch between Surface (2496x1664) and 4K (3840x2160)" -ForegroundColor Gray
 Set-VMVideo -VMName $vmName `
-    -HorizontalResolution $horizontalRes `
-    -VerticalResolution $verticalRes `
+    -HorizontalResolution 3840 `
+    -VerticalResolution 2160 `
     -ResolutionType Single
 
 # Disable checkpoints to save disk space (optional - comment out if you want checkpoints)

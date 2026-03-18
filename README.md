@@ -4,7 +4,8 @@ Automated setup scripts for running Zorin OS 18 Pro in Hyper-V on Surface Laptop
 
 ## Features
 
-- ✅ Native Surface Laptop 7 resolution (2496x1664)
+- ✅ Native Surface Laptop 7 resolution (2496x1664) and 4K external monitor (3840x2160)
+- ✅ Easy resolution switching between Surface and 4K displays
 - ✅ Hyper-V integration services
 - ✅ Display driver fix (Ubuntu 24.04 hyperv_fb conflict)
 - ✅ VM hang prevention (disables problematic suspend)
@@ -27,7 +28,7 @@ This will:
 - Prompt for VM name (or use default "Zorin18Pro")
 - Check for existing VM and warn before overwriting
 - Create Gen 2 VM with optimal settings
-- Configure resolution (2496x1664)
+- Configure maximum resolution to 4K (3840x2160) - supports both Surface and external monitors
 - Set up External Virtual Switch for networking
 - Disable Secure Boot (required for Zorin ISO)
 
